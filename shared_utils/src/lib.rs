@@ -16,40 +16,20 @@ pub struct Msg {
     pub data: MsgDataType,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LoginMsg {
     pub username: String,
     pub password: String
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MsgType {
     Msg(Msg),
     Login(LoginMsg),
     Register(LoginMsg),
 }
 
-pub fn encode_str(str: &String) -> Vec<u8> {
-    let mut buf = Vec::new();
-
-    let mut offset: u8 = 0;
-    let msg_size = str.len();
-    buf.reserve(MSG_SIZE_BYTES + msg_size);
-
-    // writing the msg size
-    for _ in 0..MSG_SIZE_BYTES {
-        buf.push(((msg_size >> offset) & 0xFF) as u8);
-        offset += 8;
-    }
-
-    buf.splice(MSG_SIZE_BYTES.., str.bytes());
-
-    buf
-}
-
-pub fn encode_bytes(bytes: Vec<u8>) -> Vec<u8> {
-    let mut buf = Vec::new();
-
+fn encode_bytes_to_buf(bytes: Vec<u8>, buf: &mut Vec<u8>) {
     let mut offset: u8 = 0;
     let msg_size = bytes.len();
     buf.reserve(MSG_SIZE_BYTES + msg_size);
@@ -61,25 +41,19 @@ pub fn encode_bytes(bytes: Vec<u8>) -> Vec<u8> {
     }
 
     buf.splice(MSG_SIZE_BYTES.., bytes);
+}
 
+pub fn encode_bytes(bytes: Vec<u8>) -> Vec<u8> {
+    let mut buf = Vec::new();
+    encode_bytes_to_buf(bytes, &mut buf);
     buf
 }
 
-pub fn encode_msg(msg: &MsgType) -> Vec<u8> {
+pub fn encode_msg_type(msg: &MsgType) -> Vec<u8> {
     let mut buf = Vec::new();
     let serialized = serde_json::to_string(msg).unwrap();
 
-    let mut offset: u8 = 0;
-    let msg_size = serialized.len();
-    buf.reserve(MSG_SIZE_BYTES + msg_size);
-
-    // writing the msg size
-    for _ in 0..MSG_SIZE_BYTES {
-        buf.push(((msg_size >> offset) & 0xFF) as u8);
-        offset += 8;
-    }
-
-    buf.splice(MSG_SIZE_BYTES.., serialized.bytes());
+    encode_bytes_to_buf(serialized.as_bytes().to_vec(), &mut buf);
 
     buf
 }

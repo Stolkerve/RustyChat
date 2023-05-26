@@ -16,6 +16,7 @@ pub fn new_conection(
     tokio::spawn(async move {
         let (mut reader, mut writer) = socket.split();
         let mut msg_len_buf = vec![0; MSG_SIZE_BYTES];
+        println!("Peer {:?} conected", addr);
 
         loop {
             tokio::select! {
@@ -34,8 +35,7 @@ pub fn new_conection(
                         MsgType::Msg(_) => {
                             tx.send((addr.to_string(), encode_bytes(buf))).unwrap();
                         },
-                        MsgType::Login(_) => todo!(),
-                        MsgType::Register(_) => todo!(),
+                        _ => {}
                     }
                 },
                 msg = rx.recv() => {

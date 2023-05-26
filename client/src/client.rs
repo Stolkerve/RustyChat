@@ -1,11 +1,11 @@
-use shared_utils::{decode_header, decode_msg, MSG_SIZE_BYTES, Msg};
+use shared_utils::{decode_header, MSG_SIZE_BYTES, Msg, decode_msg, encode_msg_type, MsgType };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
 };
 
 use iced_futures::futures::{
-    channel::mpsc::{self},
+    channel::mpsc,
     StreamExt,
 };
 use iced_futures::futures::sink::SinkExt;
@@ -19,7 +19,7 @@ pub enum Event {
 }
 
 pub enum Input {
-    MsgCreated,
+    MsgCreated(Msg),
 }
 
 pub enum State {
@@ -76,8 +76,8 @@ pub fn connect() -> Subscription<Event> {
                             }
                             msg = rx.select_next_some() => {
                                 match msg {
-                                    Input::MsgCreated => {
-                                        if writer.write_all("".as_bytes()).await.is_err() {
+                                    Input::MsgCreated(msg) => {
+                                        if writer.write_all(&encode_msg_type(&MsgType::Msg(msg))).await.is_err() {
                                             let _ = output.send(Event::FailConnection).await;
                                             state = State::Disconnected;
                                         }
