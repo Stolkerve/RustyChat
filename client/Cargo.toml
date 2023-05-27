@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 shared_utils = {path="../shared_utils"}
-iced = { version = "0.9", features = ["tokio"] }
+iced = { version = "0.9", features = ["tokio", "image"] }
 iced_futures = { version = "0.6.0", features = ["tokio"]}
 iced_native = "0.10.3"
+iced_aw = { version = "0.5", features = ["icons"] }
+native-dialog = "0.6.3"

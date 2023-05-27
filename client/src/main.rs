@@ -1,11 +1,20 @@
 mod client;
 
-use iced::widget::{button, column, container, row, scrollable, text, text_input, Column};
+use std::fs::File;
+use std::io::prelude::*;
+
+use iced::widget::{button, column, container, row, scrollable, text, text_input, Column, Button, Text};
 use iced::{executor, Application, Command, Element, Length, Settings, Theme};
 use iced_futures::futures::channel::mpsc;
 use iced_native::color;
+use iced_native::widget::image::Image;
+use iced_native::widget::Container;
+use iced_native::image::Handle;
+use iced_aw::{Icon, ICON_FONT};
+
 use shared_utils::{MsgDataType, ServerMsg, UserMsg, MsgType, LoginMsg};
 
+use native_dialog::FileDialog;
 fn main() -> Result<(), iced::Error> {
     RustyChat::run(Settings::default())
 }
@@ -27,6 +36,7 @@ enum Messages {
     SubmitNewMessage,
     SubmitSignupForm,
     SubmitLoginForm,
+    SubmitImg,
 }
 
 struct RustyChat {
@@ -195,6 +205,32 @@ impl Application for RustyChat {
                 }
                 Command::none()
             }
+            Messages::SubmitImg => {
+                let path = FileDialog::new()
+                    .set_location("~/")
+                    .add_filter("Image", &["jpg", "jpeg", "png"])
+                    .show_open_single_file()
+                    .unwrap();
+                if let Some(path) = path {
+                    let mut f = File::open(path).unwrap();
+                    let mut buf = Vec::new();
+                    f.read_to_end(&mut buf).unwrap();
+                    let msg = UserMsg {
+                            username: self.username.clone(),
+                            data: MsgDataType::Image(buf.clone()),
+                            token: self.token.clone()
+                    };
+                    if let Some(sender) = &mut self.sender {
+                        sender.start_send(client::Input::MsgType(MsgType::MsgOut(msg))).unwrap();
+                    }
+                    self.messages.push(ServerMsg {
+                        username: self.username.clone(),
+                        data: MsgDataType::Image(buf),
+                    });
+                    return Command::none()
+                }
+                Command::none()
+            }
             Messages::ChangeView(view) => {
                 self.clear();
                 self.view = view;
@@ -268,7 +304,19 @@ impl Application for RustyChat {
                     let input = text_input("", &self.new_message_input)
                         .on_input(Messages::NewMessageInput)
                         .on_submit(Messages::SubmitNewMessage);
-                    let submit = button("Send").on_press(Messages::SubmitNewMessage);
+                    // let submit = button("Send").on_press(Messages::SubmitNewMessage);
+                    let submit = Button::new(
+                        Text::new(Icon::ArrowUpRight.to_string())
+                            .width(Length::Shrink)
+                            .height(Length::Shrink)
+                            .font(ICON_FONT)
+                    ).on_press(Messages::SubmitNewMessage);
+                    let submit_img = Button::new(
+                        Text::new(Icon::ImageAlt.to_string())
+                            .width(Length::Shrink)
+                            .height(Length::Shrink)
+                            .font(ICON_FONT)
+                    ).on_press(Messages::SubmitImg);
                     return container(
                         column![
                             scrollable(
@@ -282,13 +330,24 @@ impl Application for RustyChat {
                                                 0x005c00
                                             };
                                             match &msg.data {
-                                                shared_utils::MsgDataType::Text(msg_text) => {
+                                                MsgDataType::Text(msg_text) => {
                                                     return row![
                                                         text(format!("[{}]", msg.username))
                                                             .style(color!(color)),
                                                         text(msg_text),
                                                     ]
                                                     .spacing(6)
+                                                }
+                                                MsgDataType::Image(buffer) => {
+                                                    let mem = Handle::from_memory(buffer.clone());
+                                                    let img = Image::<Handle>::new(mem);
+                                                    return row![
+                                                        column![
+                                                            text(format!("[{}]", msg.username))
+                                                                .style(color!(color)),
+                                                            Container::new(img)
+                                                        ].spacing(6)
+                                                    ]
                                                 }
                                             }
                                         })
@@ -299,7 +358,7 @@ impl Application for RustyChat {
                             )
                             .width(Length::Fill)
                             .height(Length::Fill),
-                            row![input, submit]
+                            row![input, submit, submit_img].spacing(6)
                         ]
                         .spacing(10)
                         .padding(20),

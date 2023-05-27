@@ -62,7 +62,6 @@ pub fn connect() -> Subscription<Event> {
                                         let _ = reader.read(&mut buf).await.unwrap();
 
                                         let recived_msg = decode_msg_type(&buf).unwrap();
-                                        println!("{:?}", recived_msg);
                                         match recived_msg {
                                             MsgType::MsgIn(msg) => {
                                                 let _ = output.send(Event::MsgRecived(msg)).await;
@@ -81,7 +80,6 @@ pub fn connect() -> Subscription<Event> {
                             msg = rx.select_next_some() => {
                                 match msg {
                                     Input::MsgType(msg) => {
-                                        // println!("{:?}", msg);
                                         if writer.write_all(&encode_msg_type(&msg)).await.is_err() {
                                             let _ = output.send(Event::FailConnection).await;
                                             state = State::Disconnected;
