@@ -1,6 +1,9 @@
 # 🦀 RustyChat 🦀
 
 Is a simple asyncronus tcp chat with gui made with rust 🦀.
+![alt Showcase gif](./xd.png)
+
+# Demo
 ![alt Showcase gif](./showcase.gif)
 
 # How to run?
