@@ -1,25 +1,25 @@
-use shared_utils::{decode_header, MSG_SIZE_BYTES, Msg, decode_msg, encode_msg_type, MsgType };
+use shared_utils::{
+    decode_header, encode_msg_type, MsgType, ServerMsg, MSG_SIZE_BYTES, decode_msg_type, ServerRes
+};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
 };
 
-use iced_futures::futures::{
-    channel::mpsc,
-    StreamExt,
-};
 use iced_futures::futures::sink::SinkExt;
+use iced_futures::futures::{channel::mpsc, StreamExt};
 use iced_native::subscription::{self, Subscription};
 
-#[derive(Debug, Clone )]
+#[derive(Debug, Clone)]
 pub enum Event {
     FailConnection,
     Connected(mpsc::Sender<Input>),
-    MsgRecived(Msg),
+    MsgRecived(ServerMsg),
+    ServerRes(ServerRes)
 }
 
 pub enum Input {
-    MsgCreated(Msg),
+    MsgType(MsgType),
 }
 
 pub enum State {
@@ -39,22 +39,17 @@ pub fn connect() -> Subscription<Event> {
 
             loop {
                 match &mut state {
-                    State::Disconnected => {
-                        match TcpStream::connect("127.0.0.1:8000").await {
-                            Ok(socket) => {
-                                let (tx, rx) = mpsc::channel(100);
-                                let _ = output.send(Event::Connected(tx)).await;
-                                state = State::Connected(rx, socket);
-                            }
-                            Err(_) => {
-                                tokio::time::sleep(
-                                    tokio::time::Duration::from_secs(1),
-                                )
-                                .await;
-                                let _ = output.send(Event::FailConnection).await;
-                            }
+                    State::Disconnected => match TcpStream::connect("127.0.0.1:8000").await {
+                        Ok(socket) => {
+                            let (tx, rx) = mpsc::channel(100);
+                            let _ = output.send(Event::Connected(tx)).await;
+                            state = State::Connected(rx, socket);
                         }
-                    }
+                        Err(_) => {
+                            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                            let _ = output.send(Event::FailConnection).await;
+                        }
+                    },
                     State::Connected(rx, socket) => {
                         let (mut reader, mut writer) = socket.split();
 
@@ -64,10 +59,19 @@ pub fn connect() -> Subscription<Event> {
                                     if bytes_readed != 0 {
                                         let incoming_msg_len = decode_header(&incoming_msg_len_buf[..]) as usize;
                                         let mut buf = vec![0; incoming_msg_len];
-                                        reader.read(&mut buf).await.unwrap();
+                                        let _ = reader.read(&mut buf).await.unwrap();
 
-                                        let recived_msg = decode_msg(&buf).unwrap();
-                                        let _ = output.send(Event::MsgRecived(recived_msg)).await;
+                                        let recived_msg = decode_msg_type(&buf).unwrap();
+                                        println!("{:?}", recived_msg);
+                                        match recived_msg {
+                                            MsgType::MsgIn(msg) => {
+                                                let _ = output.send(Event::MsgRecived(msg)).await;
+                                            },
+                                            MsgType::Server(msg) => {
+                                                let _ = output.send(Event::ServerRes(msg)).await;
+                                            },
+                                            _ => {}
+                                        }
                                         continue;
                                     }
                                 }
@@ -76,8 +80,9 @@ pub fn connect() -> Subscription<Event> {
                             }
                             msg = rx.select_next_some() => {
                                 match msg {
-                                    Input::MsgCreated(msg) => {
-                                        if writer.write_all(&encode_msg_type(&MsgType::Msg(msg))).await.is_err() {
+                                    Input::MsgType(msg) => {
+                                        // println!("{:?}", msg);
+                                        if writer.write_all(&encode_msg_type(&msg)).await.is_err() {
                                             let _ = output.send(Event::FailConnection).await;
                                             state = State::Disconnected;
                                         }

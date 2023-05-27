@@ -11,7 +11,14 @@ pub enum MsgDataType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Msg {
+pub struct UserMsg {
+    pub username: String,
+    pub data: MsgDataType,
+    pub token: String
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ServerMsg {
     pub username: String,
     pub data: MsgDataType,
 }
@@ -22,11 +29,26 @@ pub struct LoginMsg {
     pub password: String
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TokenMsg {
+    pub token: String,
+    pub username: String
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ServerRes {
+   Error(String),
+   UserToken(TokenMsg),
+   UserCreated,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MsgType {
-    Msg(Msg),
+    MsgIn(ServerMsg),
+    MsgOut(UserMsg),
     Login(LoginMsg),
-    Register(LoginMsg),
+    Signup(LoginMsg),
+    Server(ServerRes)
 }
 
 fn encode_bytes_to_buf(bytes: Vec<u8>, buf: &mut Vec<u8>) {
@@ -74,10 +96,10 @@ pub fn decode_msg_type(data: &Vec<u8>) -> Result<MsgType, serde_json::Error> {
     serde_json::from_str::<MsgType>(std::str::from_utf8(data).unwrap())
 }
 
-pub fn decode_msg(data: &Vec<u8>) -> Option<Msg> {
+pub fn decode_msg(data: &Vec<u8>) -> Option<ServerMsg> {
     if let Ok(mgs_type) = decode_msg_type(data) {
         match mgs_type {
-            MsgType::Msg(msg) => return Some(msg),
+            MsgType::MsgIn(msg) => return Some(msg),
             _ => return None
         };
     }
