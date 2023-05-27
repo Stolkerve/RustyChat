@@ -2284,6 +2284,7 @@ dependencies = [
  "iced_futures",
  "iced_native",
  "native-dialog",
+ "once_cell",
  "shared_utils",
  "tokio",
 ]

@@ -3,6 +3,8 @@ mod client;
 use std::fs::File;
 use std::io::prelude::*;
 
+use once_cell::sync::Lazy;
+
 use iced::widget::{
     button, column, container, row, scrollable, text, text_input, Button, Column, Text,
 };
@@ -17,6 +19,9 @@ use iced_native::widget::Container;
 use shared_utils::{LoginMsg, MsgDataType, MsgType, ServerMsg, UserMsg};
 
 use native_dialog::FileDialog;
+
+static MESSAGE_LOG: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
+
 fn main() -> Result<(), iced::Error> {
     RustyChat::run(Settings::default())
 }
@@ -104,7 +109,11 @@ impl Application for RustyChat {
                 }
                 client::Event::MsgRecived(msg) => {
                     self.messages.push(msg);
-                    Command::none()
+                    scrollable::snap_to(
+                        MESSAGE_LOG.clone(),
+                        scrollable::RelativeOffset::END,
+                    )
+                    // Command::none()
                 }
                 client::Event::ServerRes(res) => {
                     match res {
@@ -373,7 +382,8 @@ impl Application for RustyChat {
                                 .spacing(6)
                             )
                             .width(Length::Fill)
-                            .height(Length::Fill),
+                            .height(Length::Fill)
+                            .id(MESSAGE_LOG.clone()),
                             row![input, submit, submit_img].spacing(6)
                         ]
                         .spacing(10)

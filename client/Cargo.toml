@@ -13,3 +13,4 @@ iced_futures = { version = "0.6.0", features = ["tokio"]}
 iced_native = "0.10.3"
 iced_aw = { version = "0.5", features = ["icons"] }
 native-dialog = "0.6.3"
+once_cell = "1.15"

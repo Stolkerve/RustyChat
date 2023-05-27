@@ -20,6 +20,7 @@ pub enum Event {
 
 pub enum Input {
     MsgType(MsgType),
+    File(),
 }
 
 pub enum State {
@@ -85,6 +86,7 @@ pub fn connect() -> Subscription<Event> {
                                             state = State::Disconnected;
                                         }
                                     },
+                                    Input::File() => {}
                                 }
                             }
                         }
