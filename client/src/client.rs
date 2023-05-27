@@ -1,9 +1,11 @@
+use std::path::PathBuf;
+
 use shared_utils::{
-    decode_header, decode_msg_type, encode_msg_type, MsgType, ServerMsg, ServerRes, MSG_SIZE_BYTES,
+    decode_header, decode_msg_type, encode_msg_type, MsgType, ServerMsg, ServerRes, MSG_SIZE_BYTES, UserMsg, MsgDataType,
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpStream,
+    net::TcpStream, fs::File,
 };
 
 use iced_futures::futures::sink::SinkExt;
@@ -20,7 +22,7 @@ pub enum Event {
 
 pub enum Input {
     MsgType(MsgType),
-    File(),
+    ReadImgFile(PathBuf, String, String),
 }
 
 pub enum State {
@@ -86,7 +88,23 @@ pub fn connect() -> Subscription<Event> {
                                             state = State::Disconnected;
                                         }
                                     },
-                                    Input::File() => {}
+                                    Input::ReadImgFile(path, username, token) => {
+                                        let mut f = File::open(path).await.unwrap();
+                                        let mut buf = Vec::new();
+                                        f.read_to_end(&mut buf).await.unwrap();
+                                        let msg = MsgType::MsgOut(UserMsg {
+                                            username: username,
+                                            data: MsgDataType::Image(buf),
+                                            token: token,
+                                        });
+                                        if writer.write_all(&encode_msg_type(&msg)).await.is_err() {
+                                            let _ = output.send(Event::FailConnection).await;
+                                            state = State::Disconnected;
+                                        }
+                                        if let MsgType::MsgOut(msg) = msg {
+                                            let _ = output.send(Event::MsgRecived(ServerMsg { username: msg.username, data: msg.data })).await;
+                                        }
+                                    }
                                 }
                             }
                         }

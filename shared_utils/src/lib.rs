@@ -52,7 +52,8 @@ pub enum MsgType {
     Server(ServerRes),
 }
 
-fn encode_bytes_to_buf(bytes: Vec<u8>, buf: &mut Vec<u8>) {
+// Write the msg header and body
+fn write_header_to_buf(bytes: Vec<u8>, buf: &mut Vec<u8>) {
     let mut offset: u8 = 0;
     let msg_size = bytes.len();
     buf.reserve(MSG_SIZE_BYTES + msg_size);
@@ -68,7 +69,7 @@ fn encode_bytes_to_buf(bytes: Vec<u8>, buf: &mut Vec<u8>) {
 
 pub fn encode_bytes(bytes: Vec<u8>) -> Vec<u8> {
     let mut buf = Vec::new();
-    encode_bytes_to_buf(bytes, &mut buf);
+    write_header_to_buf(bytes, &mut buf);
     buf
 }
 
@@ -76,7 +77,7 @@ pub fn encode_msg_type(msg: &MsgType) -> Vec<u8> {
     let mut buf = Vec::new();
     let serialized: Vec<u8> = to_allocvec(msg).unwrap();
 
-    encode_bytes_to_buf(serialized, &mut buf);
+    write_header_to_buf(serialized, &mut buf);
 
     buf
 }
@@ -94,17 +95,5 @@ pub fn decode_header(data: &[u8]) -> u32 {
 }
 
 pub fn decode_msg_type(data: &[u8]) -> Result<MsgType, postcard::Error> {
-    // serde_json::from_slice::<MsgType>(data)
-    // serde_json::from_str::<MsgType>(unsafe { std::str::from_utf8_unchecked(&data) })
     from_bytes(data)
-}
-
-pub fn decode_msg(data: &[u8]) -> Option<ServerMsg> {
-    if let Ok(mgs_type) = decode_msg_type(data) {
-        match mgs_type {
-            MsgType::MsgIn(msg) => return Some(msg),
-            _ => return None,
-        };
-    }
-    None
 }

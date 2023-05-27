@@ -1,8 +1,5 @@
 mod client;
 
-use std::fs::File;
-use std::io::prelude::*;
-
 use once_cell::sync::Lazy;
 
 use iced::widget::{
@@ -218,24 +215,9 @@ impl Application for RustyChat {
                     .show_open_single_file()
                     .unwrap();
                 if let Some(path) = path {
-                    let mut f = File::open(path).unwrap();
-                    let mut buf = Vec::new();
-                    f.read_to_end(&mut buf).unwrap();
-                    let msg = UserMsg {
-                        username: self.username.clone(),
-                        data: MsgDataType::Image(buf.clone()),
-                        token: self.token.clone(),
-                    };
                     if let Some(sender) = &mut self.sender {
-                        sender
-                            .start_send(client::Input::MsgType(MsgType::MsgOut(msg)))
-                            .unwrap();
+                        sender.start_send(client::Input::ReadImgFile(path, self.username.clone(), self.token.clone())).unwrap();
                     }
-                    self.messages.push(ServerMsg {
-                        username: self.username.clone(),
-                        data: MsgDataType::Image(buf),
-                    });
-                    return Command::none();
                 }
                 Command::none()
             }
@@ -370,7 +352,7 @@ impl Application for RustyChat {
                                                     return row![column![
                                                         text(format!("[{}]", msg.username))
                                                             .style(color!(color)),
-                                                        Container::new(img)
+                                                        Container::new(img).max_height(450)
                                                     ]
                                                     .spacing(6)];
                                                 }
