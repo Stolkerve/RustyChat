@@ -1,13 +1,14 @@
 use serde::{Deserialize, Serialize};
-
-use tokio::{io::AsyncReadExt, net::tcp::ReadHalf};
+use postcard::{from_bytes, to_allocvec};
+extern crate alloc;
+use alloc::vec::Vec;
 
 pub const MSG_SIZE_BYTES: usize = std::mem::size_of::<u32>();
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MsgDataType {
     Text(String),
-    // Image
+    Image(Vec<u8>)
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -73,9 +74,9 @@ pub fn encode_bytes(bytes: Vec<u8>) -> Vec<u8> {
 
 pub fn encode_msg_type(msg: &MsgType) -> Vec<u8> {
     let mut buf = Vec::new();
-    let serialized = serde_json::to_string(msg).unwrap();
+    let serialized: Vec<u8> = to_allocvec(msg).unwrap();
 
-    encode_bytes_to_buf(serialized.as_bytes().to_vec(), &mut buf);
+    encode_bytes_to_buf(serialized, &mut buf);
 
     buf
 }
@@ -92,8 +93,10 @@ pub fn decode_header(data: &[u8]) -> u32 {
     return value;
 }
 
-pub fn decode_msg_type(data: &Vec<u8>) -> Result<MsgType, serde_json::Error> {
-    serde_json::from_str::<MsgType>(std::str::from_utf8(data).unwrap())
+pub fn decode_msg_type(data: &Vec<u8>) -> Result<MsgType, postcard::Error> {
+    // serde_json::from_slice::<MsgType>(data)
+    // serde_json::from_str::<MsgType>(unsafe { std::str::from_utf8_unchecked(&data) })
+    from_bytes(data)
 }
 
 pub fn decode_msg(data: &Vec<u8>) -> Option<ServerMsg> {
@@ -104,13 +107,4 @@ pub fn decode_msg(data: &Vec<u8>) -> Option<ServerMsg> {
         };
     }
     None
-}
-
-pub async fn read_from_socket(reader: &mut ReadHalf<'_>, mut msg_len_buf: &mut Vec<u8>) -> Vec<u8> {
-    reader.read(&mut msg_len_buf).await.unwrap();
-    let msg_len = decode_header(&msg_len_buf[..]);
-    let mut buf = vec![0; msg_len as usize];
-    reader.read(&mut buf).await.unwrap();
-
-    buf
 }
