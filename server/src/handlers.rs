@@ -1,18 +1,18 @@
+use bcrypt::{hash, verify, DEFAULT_COST};
+use hmac::{Hmac, Mac};
+use jwt::{SignWithKey, VerifyWithKey};
+use sha2::Sha256;
 use shared_utils::{
-    decode_header, decode_msg_type, encode_msg_type, MsgType, ServerRes,
-    MSG_SIZE_BYTES, ServerMsg, TokenMsg,
+    decode_header, decode_msg_type, encode_msg_type, MsgType, ServerMsg, ServerRes, TokenMsg,
+    MSG_SIZE_BYTES,
 };
 use sqlx::{Pool, Sqlite};
+use std::collections::BTreeMap;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
     sync::broadcast::{Receiver, Sender},
 };
-use hmac::{Hmac, Mac};
-use jwt::{SignWithKey, VerifyWithKey};
-use sha2::Sha256;
-use bcrypt::{DEFAULT_COST, hash, verify};
-use std::collections::BTreeMap;
 
 const SECRET: &str = "SECRETO";
 
@@ -52,7 +52,7 @@ pub fn new_conection(
                     let len = decode_header(&msg_len_buf[..]);
 
                     let mut buf = vec![0; len as usize];
-                    reader.read(&mut buf).await.unwrap();
+                    let _ = reader.read(&mut buf).await.unwrap();
                     let msg = decode_msg_type(&buf).unwrap();
                     match msg {
                         MsgType::MsgOut(msg) => {
@@ -76,24 +76,21 @@ pub fn new_conection(
                             if reader.peer_addr().unwrap().to_string() != addr {
                                 continue;
                             }
-                            match sqlx::query_as::<_, User>("SELECT * FROM users WHERE name = ?")
+                            if let Ok(user) = sqlx::query_as::<_, User>("SELECT * FROM users WHERE name = ?")
                             .bind(msg.username)
                             .bind(&msg.password)
                             .fetch_one(&db).await {
-                                Ok(user) => {
-                                    if verify(msg.password, &user.password).unwrap() {
-                                        let key: Hmac<Sha256> = Hmac::new_from_slice(SECRET.as_bytes()).unwrap();
-                                        let mut claims = BTreeMap::new();
-                                        claims.insert("id", user.id);
-                                        let token_str = claims.sign_with_key(&key).unwrap();
-                                        tx.send((peer, true, encode_msg_type(&MsgType::Server(ServerRes::UserToken(TokenMsg {
-                                            token: token_str,
-                                            username: user.name
-                                        }))))).unwrap();
-                                        continue;
-                                    }
-                                },
-                                _ => {},
+                                if verify(msg.password, &user.password).unwrap() {
+                                    let key: Hmac<Sha256> = Hmac::new_from_slice(SECRET.as_bytes()).unwrap();
+                                    let mut claims = BTreeMap::new();
+                                    claims.insert("id", user.id);
+                                    let token_str = claims.sign_with_key(&key).unwrap();
+                                    tx.send((peer, true, encode_msg_type(&MsgType::Server(ServerRes::UserToken(TokenMsg {
+                                        token: token_str,
+                                        username: user.name
+                                    }))))).unwrap();
+                                    continue;
+                                }
                             }
                             tx.send((peer, true, encode_msg_type(&MsgType::Server(ServerRes::Error("The username or password are incorrect!.".to_string()))))).unwrap();
                         },

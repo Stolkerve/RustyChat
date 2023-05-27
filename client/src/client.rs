@@ -1,5 +1,5 @@
 use shared_utils::{
-    decode_header, encode_msg_type, MsgType, ServerMsg, MSG_SIZE_BYTES, decode_msg_type, ServerRes
+    decode_header, decode_msg_type, encode_msg_type, MsgType, ServerMsg, ServerRes, MSG_SIZE_BYTES,
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -15,7 +15,7 @@ pub enum Event {
     FailConnection,
     Connected(mpsc::Sender<Input>),
     MsgRecived(ServerMsg),
-    ServerRes(ServerRes)
+    ServerRes(ServerRes),
 }
 
 pub enum Input {

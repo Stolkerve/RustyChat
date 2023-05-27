@@ -3,16 +3,18 @@ mod client;
 use std::fs::File;
 use std::io::prelude::*;
 
-use iced::widget::{button, column, container, row, scrollable, text, text_input, Column, Button, Text};
+use iced::widget::{
+    button, column, container, row, scrollable, text, text_input, Button, Column, Text,
+};
 use iced::{executor, Application, Command, Element, Length, Settings, Theme};
+use iced_aw::{Icon, ICON_FONT};
 use iced_futures::futures::channel::mpsc;
 use iced_native::color;
+use iced_native::image::Handle;
 use iced_native::widget::image::Image;
 use iced_native::widget::Container;
-use iced_native::image::Handle;
-use iced_aw::{Icon, ICON_FONT};
 
-use shared_utils::{MsgDataType, ServerMsg, UserMsg, MsgType, LoginMsg};
+use shared_utils::{LoginMsg, MsgDataType, MsgType, ServerMsg, UserMsg};
 
 use native_dialog::FileDialog;
 fn main() -> Result<(), iced::Error> {
@@ -111,7 +113,7 @@ impl Application for RustyChat {
                             self.password.clear();
 
                             self.error_msg = error;
-                        },
+                        }
                         shared_utils::ServerRes::UserToken(msg) => {
                             self.clear();
 
@@ -119,17 +121,16 @@ impl Application for RustyChat {
                             self.username = msg.username;
 
                             self.view = Views::Chat;
-
-                        },
+                        }
                         shared_utils::ServerRes::UserCreated => {
                             self.clear();
 
                             self.view = Views::LoginForm;
-                        },
+                        }
                     }
                     self.loading = false;
                     Command::none()
-                },
+                }
             },
             Messages::NewMessageInput(input) => {
                 self.new_message_input = input;
@@ -179,11 +180,9 @@ impl Application for RustyChat {
                 if let Some(sender) = &mut self.sender {
                     let msg = MsgType::Signup(LoginMsg {
                         username: self.username.clone(),
-                        password: self.password.clone()
+                        password: self.password.clone(),
                     });
-                    sender
-                        .start_send(client::Input::MsgType(msg))
-                        .unwrap();
+                    sender.start_send(client::Input::MsgType(msg)).unwrap();
                 }
                 Command::none()
             }
@@ -197,11 +196,9 @@ impl Application for RustyChat {
                 if let Some(sender) = &mut self.sender {
                     let msg = MsgType::Login(LoginMsg {
                         username: self.username.clone(),
-                        password: self.password.clone()
+                        password: self.password.clone(),
                     });
-                    sender
-                        .start_send(client::Input::MsgType(msg))
-                        .unwrap();
+                    sender.start_send(client::Input::MsgType(msg)).unwrap();
                 }
                 Command::none()
             }
@@ -216,18 +213,20 @@ impl Application for RustyChat {
                     let mut buf = Vec::new();
                     f.read_to_end(&mut buf).unwrap();
                     let msg = UserMsg {
-                            username: self.username.clone(),
-                            data: MsgDataType::Image(buf.clone()),
-                            token: self.token.clone()
+                        username: self.username.clone(),
+                        data: MsgDataType::Image(buf.clone()),
+                        token: self.token.clone(),
                     };
                     if let Some(sender) = &mut self.sender {
-                        sender.start_send(client::Input::MsgType(MsgType::MsgOut(msg))).unwrap();
+                        sender
+                            .start_send(client::Input::MsgType(MsgType::MsgOut(msg)))
+                            .unwrap();
                     }
                     self.messages.push(ServerMsg {
                         username: self.username.clone(),
                         data: MsgDataType::Image(buf),
                     });
-                    return Command::none()
+                    return Command::none();
                 }
                 Command::none()
             }
@@ -243,8 +242,7 @@ impl Application for RustyChat {
         if !self.disconected {
             match self.view {
                 Views::SignupForm => {
-                    let mut input_name = text_input("Enter username", &self.username)
-                        .width(350);
+                    let mut input_name = text_input("Enter username", &self.username).width(350);
                     let mut input_password = text_input("Enter password", &self.password)
                         .password()
                         .width(350);
@@ -264,16 +262,24 @@ impl Application for RustyChat {
                     let row_button = row![submit_button, swap_button].spacing(16);
 
                     let error_text = text(&self.error_msg).style(color!(0xFB0000));
-                    return container(column![text("Signup").size(28), input_name, input_password, row_button, error_text].spacing(12))
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .center_x()
-                        .center_y()
-                        .into();
-                },
+                    return container(
+                        column![
+                            text("Signup").size(28),
+                            input_name,
+                            input_password,
+                            row_button,
+                            error_text
+                        ]
+                        .spacing(12),
+                    )
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .center_x()
+                    .center_y()
+                    .into();
+                }
                 Views::LoginForm => {
-                    let mut input_name = text_input("Enter username", &self.username)
-                        .width(350);
+                    let mut input_name = text_input("Enter username", &self.username).width(350);
                     let mut input_password = text_input("Enter password", &self.password)
                         .password()
                         .width(350);
@@ -293,13 +299,22 @@ impl Application for RustyChat {
                     let row_button = row![submit_button, swap_button].spacing(16);
 
                     let error_text = text(&self.error_msg).style(color!(0xFB0000));
-                    return container(column![text("Login").size(28), input_name, input_password, row_button, error_text].spacing(12))
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .center_x()
-                        .center_y()
-                        .into();
-                },
+                    return container(
+                        column![
+                            text("Login").size(28),
+                            input_name,
+                            input_password,
+                            row_button,
+                            error_text
+                        ]
+                        .spacing(12),
+                    )
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .center_x()
+                    .center_y()
+                    .into();
+                }
                 Views::Chat => {
                     let input = text_input("", &self.new_message_input)
                         .on_input(Messages::NewMessageInput)
@@ -309,14 +324,16 @@ impl Application for RustyChat {
                         Text::new(Icon::ArrowUpRight.to_string())
                             .width(Length::Shrink)
                             .height(Length::Shrink)
-                            .font(ICON_FONT)
-                    ).on_press(Messages::SubmitNewMessage);
+                            .font(ICON_FONT),
+                    )
+                    .on_press(Messages::SubmitNewMessage);
                     let submit_img = Button::new(
                         Text::new(Icon::ImageAlt.to_string())
                             .width(Length::Shrink)
                             .height(Length::Shrink)
-                            .font(ICON_FONT)
-                    ).on_press(Messages::SubmitImg);
+                            .font(ICON_FONT),
+                    )
+                    .on_press(Messages::SubmitImg);
                     return container(
                         column![
                             scrollable(
@@ -341,13 +358,12 @@ impl Application for RustyChat {
                                                 MsgDataType::Image(buffer) => {
                                                     let mem = Handle::from_memory(buffer.clone());
                                                     let img = Image::<Handle>::new(mem);
-                                                    return row![
-                                                        column![
-                                                            text(format!("[{}]", msg.username))
-                                                                .style(color!(color)),
-                                                            Container::new(img)
-                                                        ].spacing(6)
+                                                    return row![column![
+                                                        text(format!("[{}]", msg.username))
+                                                            .style(color!(color)),
+                                                        Container::new(img)
                                                     ]
+                                                    .spacing(6)];
                                                 }
                                             }
                                         })
